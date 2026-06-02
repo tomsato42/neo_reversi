@@ -27,6 +27,15 @@ internal static class WebGLBuilder
         // 念のため解凍フォールバックも有効化（保険）。
         PlayerSettings.WebGL.decompressionFallback = true;
 
+        // WebGL の既定スタック（512KB）は小さく、AI のミニマックス再帰で
+        // "Maximum call stack size exceeded" になる。スタックを 8MB に拡大する。
+        // 注意：INITIAL_MEMORY(32MB) より十分小さくしないとリンクに失敗する。
+        // 過去ビルドが ProjectSettings に値を永続化するため、毎回正規化する
+        // （既存の STACK_SIZE 指定を除去してから付与し直す）。
+        string args = PlayerSettings.WebGL.emscriptenArgs ?? "";
+        args = System.Text.RegularExpressions.Regex.Replace(args, @"\s*-sSTACK_SIZE=\S+", "").Trim();
+        PlayerSettings.WebGL.emscriptenArgs = (args + " -sSTACK_SIZE=8388608").Trim(); // 8 MB
+
         var scenes = new List<string>();
         foreach (var s in EditorBuildSettings.scenes)
             if (s.enabled) scenes.Add(s.path);
