@@ -6,8 +6,7 @@
     <title>Unity Web Player | neo_othello</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <style>
-      /* Full HD(16:9) を維持したまま画面に収める（レターボックス） */
+      <style id="webgl-fit-style">
       html, body { height: 100%; margin: 0; background: #231F20; overflow: hidden; }
       #unity-container.unity-desktop, #unity-container.unity-mobile {
         position: fixed; inset: 0; transform: none;
@@ -90,7 +89,6 @@
       // Set this to false if you want to decouple this synchronization from
       // happening inside the engine, and you would instead like to size up
       // the canvas DOM size and WebGL render target sizes yourself.
-      // 内部レンダー解像度を 1920x1080 に固定（DOM サイズに追従させない）
       config.matchWebGLToCanvasSize = false;
 
       // If you would like all file writes inside Unity Application.persistentDataPath

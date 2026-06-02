@@ -158,13 +158,27 @@ public class Game : MonoBehaviour, ISetDisk
     private IEnumerator AiMove()
     {
         _isAiRunning = true;
-        yield return new WaitForSeconds(0.5f);
 
-        // 探索はメインスレッドを止めないようスレッドプールで実行し、
-        // 完了までフレームを回しながら待つ（GetBestMove は Unity 非依存でスレッドセーフ）。
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // WebGL は探索がメインスレッドを止めるため、直前の着手アニメを見せてから
+        // 1 秒後に探索へ入ることで、カクつきを「考え中」の間に隠す。
+        yield return new WaitForSeconds(1.0f);
+#else
+        yield return new WaitForSeconds(0.5f);
+#endif
+
         var board = CloneBoard();
         int total = CountTotalDisks();
         DiskColor color = _currentColor;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // WebGL はマルチスレッド非対応（スレッドプールが無く Task.Run のタスクが
+        // 実行されない）ため、メインスレッドで同期実行する。
+        var (x, y) = OthelloAI.GetBestMove(board, color, total, 5);
+        _isAiRunning = false;
+#else
+        // デスクトップ/エディタでは探索をスレッドプールで実行し、
+        // 完了までフレームを回しながら待つ（GetBestMove は Unity 非依存でスレッドセーフ）。
         Task<(int x, int y)> search = Task.Run(() => OthelloAI.GetBestMove(board, color, total, 5));
 
         while (!search.IsCompleted)
@@ -179,6 +193,7 @@ public class Game : MonoBehaviour, ISetDisk
         }
 
         var (x, y) = search.Result;
+#endif
         if (x >= 0) Place(x, y);
     }
 
