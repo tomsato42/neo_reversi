@@ -56,6 +56,7 @@ internal static class WebGLBuilder
 
         if (summary.result == BuildResult.Succeeded)
         {
+            PostProcessIndexHtml(System.IO.Path.Combine(outputPath, "index.html"));
             Debug.Log($"WebGLBuilder: 成功 ({summary.totalSize} bytes) -> {outputPath}");
             if (exitOnFinish) EditorApplication.Exit(0);
         }
@@ -64,5 +65,47 @@ internal static class WebGLBuilder
             Debug.LogError($"WebGLBuilder: 失敗 ({summary.result})");
             if (exitOnFinish) EditorApplication.Exit(1);
         }
+    }
+
+    // 生成された index.html を後処理して、Full HD(16:9) を維持したまま
+    // 画面に収まる（レターボックス）表示にする。再ビルドのたびに適用される。
+    private static void PostProcessIndexHtml(string indexPath)
+    {
+        if (!System.IO.File.Exists(indexPath))
+        {
+            Debug.LogWarning($"WebGLBuilder: index.html が見つかりません: {indexPath}");
+            return;
+        }
+
+        string html = System.IO.File.ReadAllText(indexPath);
+
+        // 1) 内部レンダー解像度を 1920x1080 に固定（DOM サイズに追従させない）
+        if (html.Contains("// config.matchWebGLToCanvasSize = false;"))
+            html = html.Replace("// config.matchWebGLToCanvasSize = false;",
+                                 "config.matchWebGLToCanvasSize = false;");
+
+        // 2) 16:9 を保ったまま画面に収める CSS を <head> に注入（重複注入は避ける）
+        const string marker = "id=\"webgl-fit-style\"";
+        if (!html.Contains(marker))
+        {
+            string style =
+                "    <style id=\"webgl-fit-style\">\n" +
+                "      html, body { height: 100%; margin: 0; background: #231F20; overflow: hidden; }\n" +
+                "      #unity-container.unity-desktop, #unity-container.unity-mobile {\n" +
+                "        position: fixed; inset: 0; transform: none;\n" +
+                "        display: flex; align-items: center; justify-content: center;\n" +
+                "        width: 100%; height: 100%;\n" +
+                "      }\n" +
+                "      #unity-canvas, .unity-mobile #unity-canvas {\n" +
+                "        width: min(100vw, calc(100vh * 16 / 9)) !important;\n" +
+                "        height: min(100vh, calc(100vw * 9 / 16)) !important;\n" +
+                "      }\n" +
+                "      #unity-footer { display: none; }\n" +
+                "    </style>\n";
+            html = html.Replace("</head>", style + "  </head>");
+        }
+
+        System.IO.File.WriteAllText(indexPath, html);
+        Debug.Log("WebGLBuilder: index.html を後処理（Full HD固定＋画面フィット）しました。");
     }
 }
